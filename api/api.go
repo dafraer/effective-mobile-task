@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/dafraer/effective-mobile-task/enrich"
 	"github.com/dafraer/effective-mobile-task/store"
@@ -36,11 +37,11 @@ func (s *Service) Run(ctx context.Context, address string) error {
 	//Four REST routes
 	// /get - get users with filters and pagination
 	// /delete - delete user by id
-	// /edit - edit user
+	// /update - update user data
 	// /add - add user
 	http.HandleFunc("/get", s.getHandler)
 	http.HandleFunc("/delete", s.deleteHandler)
-	http.HandleFunc("/edit", s.editHandler)
+	http.HandleFunc("/update", s.updateHandler)
 	http.HandleFunc("/add", s.addHandler)
 
 	//Create a channel to listen for errors
@@ -73,8 +74,68 @@ func (s *Service) Run(ctx context.Context, address string) error {
 	return nil
 }
 
-func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
+type getResponse struct {
+	Cursor int             `json:"cursor"`
+	People []*store.Person `json:"people"`
+}
 
+func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+	//Parse query parameters
+	limitStr := params.Get("limit")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 || limit > 100 {
+		http.Error(w, "limit must be an integer", http.StatusBadRequest)
+		s.logger.Errorw("Error converting limit to int", "error", err)
+		return
+	}
+	cursorStr := params.Get("cursor")
+	cursor := 0
+	if cursorStr != "" {
+		cursor, err = strconv.Atoi(cursorStr)
+		if err != nil || cursor < 0 {
+			http.Error(w, "cursor must be a positive integer", http.StatusBadRequest)
+			s.logger.Errorw("Error converting cursor to int", "error", err)
+			return
+		}
+	}
+	ageStr := params.Get("age")
+	age := 0
+	if ageStr != "" {
+		age, err = strconv.Atoi(ageStr)
+		if err != nil || age < 0 {
+			http.Error(w, "age must be a positive integer", http.StatusBadRequest)
+			s.logger.Errorw("Error converting age to int", "error", err)
+			return
+		}
+	}
+
+	//Get the people from the database
+	people, err := s.db.GetPeople(r.Context(), &store.Params{
+		Limit:       limit,
+		Cursor:      cursor,
+		Name:        params.Get("name"),
+		Surname:     params.Get("surname"),
+		Patronymic:  params.Get("patronymic"),
+		Age:         age,
+		Gender:      params.Get("gender"),
+		Nationality: params.Get("nationality"),
+	})
+	if err != nil {
+		http.Error(w, "error getting people", http.StatusInternalServerError)
+		s.logger.Errorw("Error getting people", "error", err)
+		return
+	}
+
+	//Write people as a json response
+	w.Header().Set("Content-Type", "application/json")
+	resp, err := json.Marshal(getResponse{Cursor: cursor + limit, People: people})
+	if err != nil {
+		http.Error(w, "error marshalling json", http.StatusInternalServerError)
+		s.logger.Errorw("Error marshalling json", "error", err)
+		return
+	}
+	w.Write(resp)
 }
 
 // deleteHandler deletes a person by id
@@ -84,14 +145,51 @@ func (s *Service) deleteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	if err := s.db.DeletePerson(r.Context(), id); err != nil {
+
+	//Convert the id to an int
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, "id must be an integer", http.StatusBadRequest)
+		s.logger.Errorw("Error converting id to int", "error", err)
+		return
+	}
+
+	if err := s.db.DeletePerson(r.Context(), idInt); err != nil {
 		http.Error(w, "error deleting person", http.StatusInternalServerError)
 		s.logger.Errorw("Error deleting person", "error", err)
 	}
 }
 
-func (s *Service) editHandler(w http.ResponseWriter, r *http.Request) {
+type updateRequest struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Surname     string `json:"surname"`
+	Patronymic  string `json:"patronymic"`
+	Age         int    `json:"age"`
+	Gender      string `json:"gender"`
+	Nationality string `json:"nationality"`
+}
 
+func (s *Service) updateHandler(w http.ResponseWriter, r *http.Request) {
+	//Parse the request body
+	var person updateRequest
+	if err := json.NewDecoder(r.Body).Decode(&person); err != nil {
+		http.Error(w, "error decoding json", http.StatusBadRequest)
+		s.logger.Errorw("Error decoding json", "error", err)
+		return
+	}
+	if err := s.db.UpdatePerson(r.Context(), &store.Person{
+		ID:          person.ID,
+		Name:        person.Name,
+		Surname:     person.Surname,
+		Patronymic:  person.Patronymic,
+		Age:         person.Age,
+		Gender:      person.Gender,
+		Nationality: person.Nationality,
+	}); err != nil {
+		http.Error(w, "error editing person", http.StatusInternalServerError)
+		s.logger.Errorw("Error editing person", "error", err)
+	}
 }
 
 type addRequest struct {
@@ -100,7 +198,7 @@ type addRequest struct {
 	Patronymic string `json:"patronymic"`
 }
 
-// addHandler enriches person and saves it to the database
+// addHandler enriches person and saves them to the database
 func (s *Service) addHandler(w http.ResponseWriter, r *http.Request) {
 	//Parse the request body
 	var person addRequest

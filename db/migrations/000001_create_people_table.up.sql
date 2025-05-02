@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS people (
-		id TEXT PRIMARY KEY,
+		id SERIAL PRIMARY KEY,
 		name TEXT,
 		surname TEXT,
 		patronymic TEXT,
