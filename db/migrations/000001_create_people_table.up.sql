@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS people (
 		patronymic TEXT,
         age INT,
         geneder TEXT,
-        nationality TEXT,
+        nationality TEXT
 );

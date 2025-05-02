@@ -8,8 +8,8 @@ import (
 
 	"github.com/dafraer/effective-mobile-task/api"
 	"github.com/dafraer/effective-mobile-task/store"
-	"github.com/golang-migrate/migrate"
-	"github.com/golang-migrate/migrate/database/postgres"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -38,11 +38,20 @@ func main() {
 
 	//Connect to the db nad perfprm migrations
 	db, err := sql.Open("postgres", dbConnStr)
+	if err != nil {
+		panic(err)
+	}
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://db/migrations",
-		"postgres", driver)
-	m.Up()
+	if err != nil {
+		panic(err)
+	}
+	m, err := migrate.NewWithDatabaseInstance("file://db/migrations", "postgres", driver)
+	if err != nil {
+		panic(err)
+	}
+	if err := m.Up(); err != nil {
+		panic(err)
+	}
 	storage := store.New(db)
 
 	//Create and run the servie
