@@ -80,12 +80,18 @@ type getResponse struct {
 }
 
 func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
+	//Check if the method is GET
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	//Parse query parameters
+	params := r.URL.Query()
 	limitStr := params.Get("limit")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil || limit <= 0 || limit > 100 {
-		http.Error(w, "limit must be an integer", http.StatusBadRequest)
+		http.Error(w, "limit must be a positive integer", http.StatusBadRequest)
 		s.logger.Errorw("Error converting limit to int", "error", err)
 		return
 	}
@@ -94,7 +100,7 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	if cursorStr != "" {
 		cursor, err = strconv.Atoi(cursorStr)
 		if err != nil || cursor < 0 {
-			http.Error(w, "cursor must be a positive integer", http.StatusBadRequest)
+			http.Error(w, "cursor must be an integer larger or equal to 0", http.StatusBadRequest)
 			s.logger.Errorw("Error converting cursor to int", "error", err)
 			return
 		}
@@ -128,18 +134,25 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Write people as a json response
-	w.Header().Set("Content-Type", "application/json")
 	resp, err := json.Marshal(getResponse{Cursor: cursor + limit, People: people})
 	if err != nil {
 		http.Error(w, "error marshalling json", http.StatusInternalServerError)
 		s.logger.Errorw("Error marshalling json", "error", err)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(resp)
 }
 
 // deleteHandler deletes a person by id
 func (s *Service) deleteHandler(w http.ResponseWriter, r *http.Request) {
+	//Check if the method is DELETE
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	//Get id from query paramters
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		http.Error(w, "id is required", http.StatusBadRequest)
@@ -171,6 +184,12 @@ type updateRequest struct {
 }
 
 func (s *Service) updateHandler(w http.ResponseWriter, r *http.Request) {
+	//Check if the method is PUT or PATCH
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	//Parse the request body
 	var person updateRequest
 	if err := json.NewDecoder(r.Body).Decode(&person); err != nil {
@@ -200,6 +219,11 @@ type addRequest struct {
 
 // addHandler enriches person and saves them to the database
 func (s *Service) addHandler(w http.ResponseWriter, r *http.Request) {
+	//Check if the method is POST
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	//Parse the request body
 	var person addRequest
 	if err := json.NewDecoder(r.Body).Decode(&person); err != nil {
