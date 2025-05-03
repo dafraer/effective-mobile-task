@@ -50,26 +50,6 @@ sudo docker-compose up -d
 
 <br>
 
-### Запустите с помощью Go
-
-#### 1. Скачайте код проекта
-
-```sh
-git clone https://github.com/dafraer/effective-mobile-task.git
-```  
-
-#### 2. Откройте репозиторий проекта
-
-```sh
-cd ./effective-mobile-task
-```  
-
-#### 3. В терминале на linux/macOS запустите следующую команду указав подходящий вам порт:
-
-```sh
-go run ./cmd/main.go
-```  
-
 <!-- CONTACT -->
 ## Контакты
 
