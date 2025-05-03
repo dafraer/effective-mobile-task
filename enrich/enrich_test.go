@@ -2,9 +2,11 @@ package enrich
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestEnrichPerson(t *testing.T) {
@@ -12,8 +14,14 @@ func TestEnrichPerson(t *testing.T) {
 	name := "Ivan"
 	surname := "Ivanov"
 	patronymic := "Ivanovich"
+	//Create logger
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(fmt.Errorf("error while creating new Logger, %v ", err))
+	}
 
-	person, err := EnrichPerson(context.Background(), name, surname, patronymic)
+	enricher := New(logger.Sugar())
+	person, err := enricher.EnrichPerson(context.Background(), name, surname, patronymic)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, person)

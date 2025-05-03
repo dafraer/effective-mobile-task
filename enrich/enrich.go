@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -23,25 +25,42 @@ type Person struct {
 	Nationality string `json:"nationality"`
 }
 
+type Enricher interface {
+	EnrichPerson(ctx context.Context, name, surname, patronymic string) (*Person, error)
+}
+
+type defaultEnricher struct {
+	logger *zap.SugaredLogger
+}
+
+func New(logger *zap.SugaredLogger) Enricher {
+	return &defaultEnricher{logger: logger}
+}
+
 // Enrich person enriches person struct with age, gender and nationality from APIs and returns enriched struct
-func EnrichPerson(ctx context.Context, name, surname, patronymic string) (*Person, error) {
+func (e *defaultEnricher) EnrichPerson(ctx context.Context, name, surname, patronymic string) (*Person, error) {
+	e.logger.Debugw("EnrichPerson called", "name", name, "surname", surname, "patronymic", patronymic)
+
 	//Get age
 	age, err := getAge(ctx, name)
 	if err != nil {
 		return nil, err
 	}
+	e.logger.Debugw("Received age from API", "age", age)
 
 	//Get gender
 	gender, err := getGender(ctx, name)
 	if err != nil {
 		return nil, err
 	}
+	e.logger.Debugw("Received gender from API", "gender", gender)
 
 	//Get nationality
 	nationality, err := getNationality(ctx, name)
 	if err != nil {
 		return nil, err
 	}
+	e.logger.Debugw("Received nationality from API", "nationality", nationality)
 
 	//Return the enriched person
 	return &Person{

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 type Storer interface {
@@ -15,7 +16,8 @@ type Storer interface {
 }
 
 type Store struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *zap.SugaredLogger
 }
 
 type Person struct {
@@ -28,14 +30,17 @@ type Person struct {
 	Nationality string `json:"nationality"`
 }
 
-func New(db *sql.DB) Storer {
+func New(db *sql.DB, logger *zap.SugaredLogger) Storer {
 	return &Store{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
 
 // Delete deletes person form the database by their ID
 func (s *Store) DeletePerson(ctx context.Context, id int) error {
+	s.logger.Debugw("DeletePerson called", "id", id)
+
 	_, err := s.db.ExecContext(ctx, "DELETE FROM people WHERE id = $1;", id)
 	if err != nil {
 		return err
@@ -45,15 +50,20 @@ func (s *Store) DeletePerson(ctx context.Context, id int) error {
 
 // SavePerson saves a person to the database and returns the ID of the saved person
 func (s *Store) SavePerson(ctx context.Context, person *Person) (int, error) {
+	s.logger.Debugw("SavePerson called", "person", *person)
+
 	var id int
 	err := s.db.QueryRowContext(ctx, "INSERT INTO people (name, surname, patronymic, age, gender, nationality) VALUES ($1, $2, $3, $4, $5, $6) RETURNING ID;",
 		person.Name, person.Surname, person.Patronymic, person.Age, person.Gender, person.Nationality).Scan(&id)
+	s.logger.Debugw("Saved person", "id", id)
 	return id, err
 }
 
 // UpdatePerson updates a person in the database
 // It only updates non-zero fields
 func (s *Store) UpdatePerson(ctx context.Context, person *Person) error {
+	s.logger.Debugw("UpdatePerson called", "person", *person)
+
 	_, err := s.db.ExecContext(ctx, `
 	UPDATE people 
 	SET 
@@ -82,6 +92,7 @@ type Params struct {
 // GetPeople retrieves next page of users from the database
 // It returns slice of people with ID greater than cursor and specified parameters
 func (s *Store) GetPeople(ctx context.Context, params *Params) ([]*Person, error) {
+	s.logger.Debugw("GetPeople called", "params", *params)
 
 	//Get people from the database
 	rows, err := s.db.QueryContext(ctx, `
@@ -110,5 +121,7 @@ func (s *Store) GetPeople(ctx context.Context, params *Params) ([]*Person, error
 		}
 		people = append(people, &p)
 	}
+	s.logger.Debugw("Received people from the database", "people", people)
+
 	return people, err
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestSavePerson(t *testing.T) {
@@ -308,6 +310,13 @@ func initStore() (Storer, error) {
 		panic(err)
 	}
 
+	//Create logger
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(fmt.Errorf("error while creating new Logger, %v ", err))
+	}
+	sugar := logger.Sugar()
+
 	//Returns the new storage
-	return New(db), nil
+	return New(db, sugar), nil
 }

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/dafraer/effective-mobile-task/enrich"
 	"github.com/dafraer/effective-mobile-task/store"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -21,7 +22,7 @@ func TestGetHandler(t *testing.T) {
 	sugar := logger.Sugar()
 
 	//Create new server for testing
-	service := New(sugar, store.NewMockStore())
+	service := New(sugar, store.NewMockStore(), enrich.NewMockEnricher())
 
 	//Create test server
 	server := httptest.NewServer(http.HandlerFunc(service.getHandler))
@@ -123,7 +124,7 @@ func TestAddHandler(t *testing.T) {
 	sugar := logger.Sugar()
 
 	//Create new server for testing
-	service := New(sugar, store.NewMockStore())
+	service := New(sugar, store.NewMockStore(), enrich.NewMockEnricher())
 
 	//Create test server
 	server := httptest.NewServer(http.HandlerFunc(service.addHandler))
@@ -171,7 +172,7 @@ func TestUpdateHandler(t *testing.T) {
 	sugar := logger.Sugar()
 
 	//Create new server for testing
-	service := New(sugar, store.NewMockStore())
+	service := New(sugar, store.NewMockStore(), enrich.NewMockEnricher())
 
 	//Create test server
 	server := httptest.NewServer(http.HandlerFunc(service.updateHandler))
@@ -219,7 +220,7 @@ func TestDeleteHandler(t *testing.T) {
 	sugar := logger.Sugar()
 
 	//Create new server for testing
-	service := New(sugar, store.NewMockStore())
+	service := New(sugar, store.NewMockStore(), enrich.NewMockEnricher())
 
 	//Create test server
 	server := httptest.NewServer(http.HandlerFunc(service.deleteHandler))
