@@ -1,0 +1,297 @@
+basePath: /
+definitions:
+  api.addRequest:
+    properties:
+      name:
+        type: string
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+  api.getResponse:
+    properties:
+      cursor:
+        type: integer
+      people:
+        items:
+          $ref: '#/definitions/store.Person'
+        type: array
+    type: object
+  api.updateRequest:
+    properties:
+      age:
+        type: integer
+      gender:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      nationality:
+        type: string
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+  store.Person:
+    properties:
+      age:
+        type: integer
+      gender:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      nationality:
+        type: string
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Technical task for the position of Junior Golang Developer at Effective
+    Mobile
+  title: Effective Mobile Task API
+  version: "1.0"
+paths:
+  /add:
+    post:
+      consumes:
+      - application/json
+      description: Takes basic person details (name, surname, patronymic(optional)),
+        enriches them with additional data (age, gender, nationality), saves the complete
+        record to the database, and returns the newly generated ID.
+      operationId: add-person
+      parameters:
+      - description: Basic person details (name, surname, patronymic(optional)) to
+          add and enrich.
+        in: body
+        name: person
+        required: true
+        schema:
+          $ref: '#/definitions/api.addRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully added person, returns the new person's ID." example(12345)
+            // Assuming ID is an integer
+          schema:
+            type: integer
+        "400":
+          description: 'Bad Request: Error decoding JSON request body.'
+          schema:
+            type: string
+        "405":
+          description: 'Method Not Allowed: The HTTP method must be POST.'
+          schema:
+            type: string
+        "500":
+          description: 'Internal Server Error: Failed to enrich person data or save
+            the person to the database.'
+          schema:
+            type: string
+      summary: Add a new person after enrichment
+      tags:
+      - People
+  /delete:
+    delete:
+      description: Deletes a person record from the system based on the ID provided
+        as a query parameter.
+      operationId: delete-person-by-id
+      parameters:
+      - description: ID of the person to delete
+        example: 123
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Successfully deleted person (No content returned, only status)
+          schema:
+            type: string
+        "400":
+          description: 'Bad Request: ''id'' query parameter is required or must be
+            an integer.'
+          schema:
+            type: string
+        "405":
+          description: 'Method Not Allowed: The HTTP method used is not DELETE.'
+          schema:
+            type: string
+        "500":
+          description: 'Internal Server Error: Failed to delete the person from the
+            database.'
+          schema:
+            type: string
+      summary: Delete a person by ID
+      tags:
+      - People
+  /get:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of people based on filter criteria provided
+        as query parameters.
+      operationId: get-people-list
+      parameters:
+      - description: Number of items to return per page (must be between 1 and 100)
+        example: 10
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        required: true
+        type: integer
+      - description: Cursor for pagination (indicates the starting item index). Defaults
+          to 0.
+        example: 0
+        in: query
+        minimum: 0
+        name: cursor
+        type: integer
+      - description: Filter by exact name (case-sensitive)
+        example: Ivan
+        in: query
+        name: name
+        type: string
+      - description: Filter by exact surname (case-sensitive)
+        example: Ivanov
+        in: query
+        name: surname
+        type: string
+      - description: Filter by exact patronymic (case-sensitive)
+        example: Ivanovich
+        in: query
+        name: patronymic
+        type: string
+      - description: Filter by exact age
+        example: 30
+        in: query
+        minimum: 1
+        name: age
+        type: integer
+      - description: Filter by gender (e.g., 'male', 'female')
+        example: male
+        in: query
+        name: gender
+        type: string
+      - description: Filter by nationality code
+        example: UA
+        in: query
+        name: nationality
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: A paginated list of people and the cursor for the next page
+          schema:
+            $ref: '#/definitions/api.getResponse'
+        "400":
+          description: 'Bad Request: Invalid query parameter value or format (e.g.,
+            non-integer limit, limit out of range, negative age/cursor).'
+          schema:
+            type: string
+        "405":
+          description: 'Method Not Allowed: The HTTP method used is not GET.'
+          schema:
+            type: string
+        "500":
+          description: 'Internal Server Error: Failed to retrieve data from the database
+            or failed to marshal the JSON response.'
+          schema:
+            type: string
+      summary: Get a list of people
+      tags:
+      - People
+  /update:
+    patch:
+      consumes:
+      - application/json
+      description: Updates fields for an existing person based on the provided data.
+        Only non-empty fields in the request body are typically used for the update.
+        Requires the person's ID in the request body.
+      operationId: update-person-details
+      parameters:
+      - description: Person data to update. Include the ID of the person and the fields
+          to change.
+        in: body
+        name: person
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Successfully updated person (No content returned, only status)
+          schema:
+            type: string
+        "400":
+          description: 'Bad Request: Error decoding JSON request body.'
+          schema:
+            type: string
+        "405":
+          description: 'Method Not Allowed: The HTTP method must be PUT or PATCH.'
+          schema:
+            type: string
+        "500":
+          description: 'Internal Server Error: Failed to update the person in the
+            database.'
+          schema:
+            type: string
+      summary: Update a person's details
+      tags:
+      - People
+    put:
+      consumes:
+      - application/json
+      description: Updates fields for an existing person based on the provided data.
+        Only non-empty fields in the request body are typically used for the update.
+        Requires the person's ID in the request body.
+      operationId: update-person-details
+      parameters:
+      - description: Person data to update. Include the ID of the person and the fields
+          to change.
+        in: body
+        name: person
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateRequest'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Successfully updated person (No content returned, only status)
+          schema:
+            type: string
+        "400":
+          description: 'Bad Request: Error decoding JSON request body.'
+          schema:
+            type: string
+        "405":
+          description: 'Method Not Allowed: The HTTP method must be PUT or PATCH.'
+          schema:
+            type: string
+        "500":
+          description: 'Internal Server Error: Failed to update the person in the
+            database.'
+          schema:
+            type: string
+      summary: Update a person's details
+      tags:
+      - People
+schemes:
+- http
+- https
+swagger: "2.0"

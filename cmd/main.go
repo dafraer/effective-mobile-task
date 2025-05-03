@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/dafraer/effective-mobile-task/api"
+	_ "github.com/dafraer/effective-mobile-task/docs"
 	"github.com/dafraer/effective-mobile-task/enrich"
 	"github.com/dafraer/effective-mobile-task/store"
 	"github.com/golang-migrate/migrate/v4"
@@ -17,6 +18,14 @@ import (
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
+
+// --- General API Information ---
+// @title           Effective Mobile Task API
+// @version         1.0
+// @description     Technical task for the position of Junior Golang Developer at Effective Mobile
+// @host            localhost:8080
+// @BasePath        /
+// @schemes         http https
 
 func main() {
 	//Create logger
