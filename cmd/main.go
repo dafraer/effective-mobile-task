@@ -32,10 +32,7 @@ func main() {
 	}()
 
 	//Load environment variables
-	err = godotenv.Load()
-	if err != nil {
-		panic(err)
-	}
+	godotenv.Load()
 	address := os.Getenv("ADDRESS")
 	dbConnStr := os.Getenv("DB_URI")
 	if address == "" || dbConnStr == "" {
