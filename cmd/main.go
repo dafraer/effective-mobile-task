@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 
@@ -17,7 +18,7 @@ import (
 )
 
 func main() {
-	//Load environment veriables
+	//Load environment variables
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
@@ -34,9 +35,13 @@ func main() {
 		panic(fmt.Errorf("error while creating new Logger, %v ", err))
 	}
 	sugar := logger.Sugar()
-	defer sugar.Sync()
+	defer func() {
+		if err := sugar.Sync(); err != nil {
+			panic(err)
+		}
+	}()
 
-	//Connect to the db nad perfprm migrations
+	//Connect to the db and perform migrations
 	db, err := sql.Open("postgres", dbConnStr)
 	if err != nil {
 		panic(err)
@@ -49,12 +54,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := m.Up(); err != nil {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		panic(err)
 	}
 	storage := store.New(db)
 
-	//Create and run the servie
+	//Create and run the service
 	service := api.New(sugar, storage)
 	if err := service.Run(context.Background(), address); err != nil {
 		panic(err)

@@ -7,9 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestEnrichPerson tests the EnrichPerson function
 func TestEnrichPerson(t *testing.T) {
-	//Test EnrichPerson function
+
 	name := "Ivan"
 	surname := "Ivanov"
 	patronymic := "Ivanovich"
@@ -26,9 +25,7 @@ func TestEnrichPerson(t *testing.T) {
 	assert.NotEmpty(t, person.Nationality)
 }
 
-// TestGetAge tests the getAge function
 func TestGetAge(t *testing.T) {
-	//Test getAge function
 	name := "Ivan"
 
 	age, err := getAge(context.Background(), name)
@@ -37,7 +34,6 @@ func TestGetAge(t *testing.T) {
 	assert.NotEmpty(t, age)
 }
 
-// TestGetGender tests the getGender function
 func TestGetGender(t *testing.T) {
 	name := "Ivan"
 
@@ -47,7 +43,6 @@ func TestGetGender(t *testing.T) {
 	assert.NotEmpty(t, gender)
 }
 
-// TestGetNationality tests the getNationality function
 func TestGetNationality(t *testing.T) {
 	name := "Ivan"
 

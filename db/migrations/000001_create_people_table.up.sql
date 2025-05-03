@@ -4,6 +4,6 @@ CREATE TABLE IF NOT EXISTS people (
 		surname TEXT,
 		patronymic TEXT,
         age INT,
-        geneder TEXT,
+        gender TEXT,
         nationality TEXT
 );

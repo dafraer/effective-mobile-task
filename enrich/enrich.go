@@ -13,6 +13,7 @@ const (
 	nationalityApiUrl = "https://api.nationalize.io/"
 )
 
+// Person struct represents person enriched with age, gender and nationality
 type Person struct {
 	Name        string `json:"name"`
 	Surname     string `json:"surname"`
@@ -22,6 +23,7 @@ type Person struct {
 	Nationality string `json:"nationality"`
 }
 
+// Enrich person enriches person struct with age, gender and nationality from APIs and returns enriched struct
 func EnrichPerson(ctx context.Context, name, surname, patronymic string) (*Person, error) {
 	//Get age
 	age, err := getAge(ctx, name)
@@ -50,7 +52,6 @@ func EnrichPerson(ctx context.Context, name, surname, patronymic string) (*Perso
 		Gender:      gender,
 		Nationality: nationality,
 	}, nil
-
 }
 
 type AgeResponse struct {
@@ -100,7 +101,7 @@ type GenderResponse struct {
 	Probability float64 `json:"probability"`
 }
 
-// getGender makes a request to the genderize API and returns most probable gender
+// getGender makes a request to the genderize API and returns the most probable gender
 func getGender(ctx context.Context, name string) (string, error) {
 	//Add parameters to the URL
 	u, err := url.Parse(genderApiUrl)
@@ -130,7 +131,7 @@ func getGender(ctx context.Context, name string) (string, error) {
 		return "", err
 	}
 
-	//Return the gneder
+	//Return the gender
 	return genderResponse.Gender, nil
 }
 
@@ -143,7 +144,7 @@ type NationalityResponse struct {
 	}
 }
 
-// getNationality makes a request to the nationalize API and returns most probable nationality
+// getNationality makes a request to the nationalize API and returns the most probable nationality
 func getNationality(ctx context.Context, name string) (string, error) {
 	// Add parameters to the URL
 	u, err := url.Parse(nationalityApiUrl)

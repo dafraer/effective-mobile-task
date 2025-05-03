@@ -14,11 +14,12 @@ import (
 )
 
 type Service struct {
-	host   string
+	host   string //e.g. localhost:8080
 	logger *zap.SugaredLogger
 	db     store.Storer
 }
 
+// New returns a new service instance
 func New(logger *zap.SugaredLogger, db store.Storer) *Service {
 	return &Service{
 		logger: logger,
@@ -74,11 +75,13 @@ func (s *Service) Run(ctx context.Context, address string) error {
 	return nil
 }
 
+// getPresonse is a struct that contains people and cursor to the next page of data
 type getResponse struct {
 	Cursor int             `json:"cursor"`
 	People []*store.Person `json:"people"`
 }
 
+// getHandler returns people with specific filters and pagiantion
 func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	//Check if the method is GET
 	if r.Method != http.MethodGet {
@@ -88,6 +91,8 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 
 	//Parse query parameters
 	params := r.URL.Query()
+
+	//Parse limit
 	limitStr := params.Get("limit")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil || limit <= 0 || limit > 100 {
@@ -95,6 +100,8 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 		s.logger.Errorw("Error converting limit to int", "error", err)
 		return
 	}
+
+	//Parse cursor
 	cursorStr := params.Get("cursor")
 	cursor := 0
 	if cursorStr != "" {
@@ -105,6 +112,8 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	//Parse age
 	ageStr := params.Get("age")
 	age := 0
 	if ageStr != "" {
@@ -167,6 +176,7 @@ func (s *Service) deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Delete person from the database
 	if err := s.db.DeletePerson(r.Context(), idInt); err != nil {
 		http.Error(w, "error deleting person", http.StatusInternalServerError)
 		s.logger.Errorw("Error deleting person", "error", err)
@@ -183,6 +193,7 @@ type updateRequest struct {
 	Nationality string `json:"nationality"`
 }
 
+// updateHandler updates non-emprty fields in the updateRequest
 func (s *Service) updateHandler(w http.ResponseWriter, r *http.Request) {
 	//Check if the method is PUT or PATCH
 	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
@@ -197,6 +208,8 @@ func (s *Service) updateHandler(w http.ResponseWriter, r *http.Request) {
 		s.logger.Errorw("Error decoding json", "error", err)
 		return
 	}
+
+	//Update person
 	if err := s.db.UpdatePerson(r.Context(), &store.Person{
 		ID:          person.ID,
 		Name:        person.Name,
@@ -224,6 +237,7 @@ func (s *Service) addHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	//Parse the request body
 	var person addRequest
 	if err := json.NewDecoder(r.Body).Decode(&person); err != nil {
@@ -232,6 +246,7 @@ func (s *Service) addHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Enrich person struct
 	p, err := enrich.EnrichPerson(r.Context(), person.Name, person.Surname, person.Patronymic)
 	if err != nil {
 		http.Error(w, "error enriching person", http.StatusInternalServerError)
@@ -248,7 +263,6 @@ func (s *Service) addHandler(w http.ResponseWriter, r *http.Request) {
 		Gender:      p.Gender,
 		Nationality: p.Nationality,
 	})
-
 	if err != nil {
 		http.Error(w, "error saving person", http.StatusInternalServerError)
 		s.logger.Errorw("Error saving person", "error", err)
@@ -259,5 +273,4 @@ func (s *Service) addHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	resp, err := json.Marshal(id)
 	w.Write(resp)
-	w.WriteHeader(http.StatusOK)
 }
