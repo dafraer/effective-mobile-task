@@ -9,7 +9,7 @@ services:
       - ./pgdata:/var/lib/postgresql/data    
   service:
     #Make sure to change architecture to amd64 if you are running on x86_64
-    image: "dafraer/effective-mobile-task:3.0-arm64"
+    image: "dafraer/effective-mobile-task:4.0-amd64"
     container_name: service
     depends_on:
       - postgres
