@@ -3,6 +3,7 @@ package enrich
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 
@@ -27,14 +28,18 @@ type Person struct {
 
 type Enricher interface {
 	EnrichPerson(ctx context.Context, name, surname, patronymic string) (*Person, error)
+	getNationality(ctx context.Context, name string) (string, error)
+	getAge(ctx context.Context, name string) (int, error)
+	getGender(ctx context.Context, name string) (string, error)
 }
 
 type defaultEnricher struct {
+	client *http.Client
 	logger *zap.SugaredLogger
 }
 
-func New(logger *zap.SugaredLogger) Enricher {
-	return &defaultEnricher{logger: logger}
+func New(client *http.Client, logger *zap.SugaredLogger) Enricher {
+	return &defaultEnricher{client: client, logger: logger}
 }
 
 // Enrich person enriches person struct with age, gender and nationality from APIs and returns enriched struct
@@ -42,21 +47,21 @@ func (e *defaultEnricher) EnrichPerson(ctx context.Context, name, surname, patro
 	e.logger.Debugw("EnrichPerson called", "name", name, "surname", surname, "patronymic", patronymic)
 
 	//Get age
-	age, err := getAge(ctx, name)
+	age, err := e.getAge(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	e.logger.Debugw("Received age from API", "age", age)
 
 	//Get gender
-	gender, err := getGender(ctx, name)
+	gender, err := e.getGender(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	e.logger.Debugw("Received gender from API", "gender", gender)
 
 	//Get nationality
-	nationality, err := getNationality(ctx, name)
+	nationality, err := e.getNationality(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +85,7 @@ type AgeResponse struct {
 }
 
 // getAge makes a request to the agify API and returns most probable age
-func getAge(ctx context.Context, name string) (int, error) {
+func (e *defaultEnricher) getAge(ctx context.Context, name string) (int, error) {
 	//Add parameters to the URL
 	u, err := url.Parse(ageApiUrl)
 	if err != nil {
@@ -97,7 +102,7 @@ func getAge(ctx context.Context, name string) (int, error) {
 	}
 
 	//Make the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := e.client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -121,7 +126,7 @@ type GenderResponse struct {
 }
 
 // getGender makes a request to the genderize API and returns the most probable gender
-func getGender(ctx context.Context, name string) (string, error) {
+func (e *defaultEnricher) getGender(ctx context.Context, name string) (string, error) {
 	//Add parameters to the URL
 	u, err := url.Parse(genderApiUrl)
 	if err != nil {
@@ -138,7 +143,7 @@ func getGender(ctx context.Context, name string) (string, error) {
 	}
 
 	//Make the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := e.client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -160,11 +165,11 @@ type NationalityResponse struct {
 	Country []struct {
 		CountryID   string  `json:"country_id"`
 		Probability float64 `json:"probability"`
-	}
+	} `json:"country"`
 }
 
 // getNationality makes a request to the nationalize API and returns the most probable nationality
-func getNationality(ctx context.Context, name string) (string, error) {
+func (e *defaultEnricher) getNationality(ctx context.Context, name string) (string, error) {
 	// Add parameters to the URL
 	u, err := url.Parse(nationalityApiUrl)
 	if err != nil {
@@ -181,7 +186,7 @@ func getNationality(ctx context.Context, name string) (string, error) {
 	}
 
 	// Make the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := e.client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -194,5 +199,8 @@ func getNationality(ctx context.Context, name string) (string, error) {
 	}
 
 	// Return the nationality
-	return nationalityResponse.Country[0].CountryID, nil
+	if len(nationalityResponse.Country) > 0 {
+		return nationalityResponse.Country[0].CountryID, nil
+	}
+	return "", errors.New("Empty response from nationalize API")
 }

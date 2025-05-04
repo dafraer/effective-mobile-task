@@ -43,7 +43,7 @@ func TestGetHandler(t *testing.T) {
 	//Close response body
 	assert.NoError(t, resp.Body.Close())
 
-	//Make a GET request with no limit parameter to make sure it doesnt work
+	//Make a GET request with no limit parameter to make sure it doesn't work
 	server.URL = srvUrl
 	req, err = http.NewRequest(http.MethodGet, server.URL, http.NoBody)
 	assert.NoError(t, err)
@@ -56,7 +56,7 @@ func TestGetHandler(t *testing.T) {
 	//Close response body
 	assert.NoError(t, resp.Body.Close())
 
-	//Make a GET request with negative  limit parameter to make sure it doesnt work
+	//Make a GET request with negative  limit parameter to make sure it doesn't work
 	params = url.Values{}
 	params.Add("limit", "-12")
 	server.URL = srvUrl + params.Encode()
@@ -110,7 +110,7 @@ func TestGetHandler(t *testing.T) {
 		Gender:      "male",
 		Nationality: "russian",
 	}
-	assert.Equal(t, response.Cursor, 5)
+	assert.Equal(t, *response.NextCursor, 1)
 	assert.EqualValues(t, person, *response.People[0])
 
 	//Close response body

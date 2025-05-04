@@ -14,6 +14,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	minLimit = 1
+	maxLimit = 1000
+	minAge   = 1
+)
+
 type Service struct {
 	host     string //e.g. localhost:8080
 	logger   *zap.SugaredLogger
@@ -80,8 +86,8 @@ func (s *Service) Run(ctx context.Context, address string) error {
 
 // getResponse is a struct that contains people and cursor to the next page of data
 type getResponse struct {
-	Cursor int             `json:"cursor"`
-	People []*store.Person `json:"people"`
+	NextCursor *int            `json:"next_cursor"`
+	People     []*store.Person `json:"people"`
 }
 
 // getHandler returns people with specific filters and pagination
@@ -91,7 +97,7 @@ type getResponse struct {
 // @ID           get-people-list
 // @Accept       json
 // @Produce      json
-// @Param        limit       query     int    true   "Number of items to return per page (must be between 1 and 100)" minimum(1) maximum(100) example(10)
+// @Param        limit       query     int    true   "Number of items to return per page (must be between 1 and 100)" minimum(1) maximum(1000) example(10)
 // @Param        cursor      query     int    false  "Cursor for pagination (indicates the starting item index). Defaults to 0." minimum(0) example(0)
 // @Param        name        query     string false  "Filter by exact name (case-sensitive)" example(Ivan)
 // @Param        surname     query     string false  "Filter by exact surname (case-sensitive)" example(Ivanov)
@@ -120,9 +126,15 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	//Parse limit
 	limitStr := params.Get("limit")
 	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 || limit > 100 {
-		http.Error(w, "limit must be a positive integer", http.StatusBadRequest)
+	if err != nil {
+		http.Error(w, "Error converting limit to int", http.StatusBadRequest)
 		s.logger.Errorw("Error converting limit to int", "error", err)
+		return
+	}
+
+	//Check if limit value is correct
+	if limit < minLimit || limit > maxLimit {
+		http.Error(w, "limit must be in range [1; 1000]", http.StatusBadRequest)
 		return
 	}
 
@@ -131,8 +143,8 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	cursor := 0
 	if cursorStr != "" {
 		cursor, err = strconv.Atoi(cursorStr)
-		if err != nil || cursor < 0 {
-			http.Error(w, "cursor must be an integer larger or equal to 0", http.StatusBadRequest)
+		if err != nil {
+			http.Error(w, "Error converting cursor to int", http.StatusBadRequest)
 			s.logger.Errorw("Error converting cursor to int", "error", err)
 			return
 		}
@@ -143,24 +155,22 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	age := 0
 	if ageStr != "" {
 		age, err = strconv.Atoi(ageStr)
-		if err != nil || age <= 0 {
-			http.Error(w, "age must be a positive integer", http.StatusBadRequest)
+		if err != nil {
+			http.Error(w, "Error converting age to int", http.StatusBadRequest)
 			s.logger.Errorw("Error converting age to int", "error", err)
+			return
+		}
+		if age < minAge {
+			http.Error(w, "Age must be a positive integer", http.StatusBadRequest)
 			return
 		}
 	}
 
+	//put params into store.Params struct
+	storeParams := store.NewParams(limit, cursor, age, params.Get("name"), params.Get("surname"), params.Get("patronymic"), params.Get("gender"), params.Get("nationality"))
+
 	//Get the people from the database
-	people, err := s.db.GetPeople(r.Context(), &store.Params{
-		Limit:       limit,
-		Cursor:      cursor,
-		Name:        params.Get("name"),
-		Surname:     params.Get("surname"),
-		Patronymic:  params.Get("patronymic"),
-		Age:         age,
-		Gender:      params.Get("gender"),
-		Nationality: params.Get("nationality"),
-	})
+	people, err := s.db.GetPeople(r.Context(), storeParams)
 	if err != nil {
 		http.Error(w, "error getting people", http.StatusInternalServerError)
 		s.logger.Errorw("Error getting people", "error", err)
@@ -168,13 +178,16 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Write people as a json response
-	resp, err := json.Marshal(getResponse{Cursor: cursor + limit, People: people})
+	var nextCursor *int
+	if len(people) > 0 {
+		nextCursor = &people[len(people)-1].ID
+	}
+	resp, err := json.Marshal(getResponse{NextCursor: nextCursor, People: people})
 	if err != nil {
 		http.Error(w, "error marshalling json", http.StatusInternalServerError)
 		s.logger.Errorw("Error marshalling json", "error", err)
 		return
 	}
-	s.logger.Debug("Response from getRequest handler", getResponse{Cursor: cursor + limit, People: people})
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(resp)
 }
@@ -202,12 +215,6 @@ func (s *Service) deleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	//Get id from query parameters
 	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Error(w, "id is required", http.StatusBadRequest)
-		return
-	}
-
-	//Convert the id to an int
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		http.Error(w, "id must be an integer", http.StatusBadRequest)
@@ -233,9 +240,9 @@ type updateRequest struct {
 	Nationality string `json:"nationality"`
 }
 
-// updateHandler updates non-empty fields in the updateRequest
+// updateHandler updates user by id
 // @Summary      Update a person's details
-// @Description  Updates fields for an existing person based on the provided data. Only non-empty fields in the request body are typically used for the update. Requires the person's ID in the request body.
+// @Description  Updates fields for an existing person based on the provided data.
 // @Tags         People
 // @ID           update-person-details
 // @Accept       json

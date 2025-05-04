@@ -21,7 +21,7 @@ func (*MockStore) UpdatePerson(ctx context.Context, person *Person) error {
 	return nil
 }
 
-func (*MockStore) GetPeople(ctx context.Context, params *Params) ([]*Person, error) {
+func (*MockStore) GetPeople(ctx context.Context, params *GetParams) ([]*Person, error) {
 	return []*Person{{
 		ID:          1,
 		Name:        "Ivan",

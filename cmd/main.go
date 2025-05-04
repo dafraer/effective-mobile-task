@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/dafraer/effective-mobile-task/api"
 	_ "github.com/dafraer/effective-mobile-task/docs"
@@ -26,6 +28,7 @@ import (
 // @host            localhost:8080
 // @BasePath        /
 // @schemes         http https
+const httpClientTimeout = time.Second * 5
 
 func main() {
 	//Create logger
@@ -42,10 +45,13 @@ func main() {
 
 	//Load environment variables
 	godotenv.Load()
-	address := os.Getenv("ADDRESS")
+	port := os.Getenv("PORT")
 	dbConnStr := os.Getenv("DB_URI")
-	if address == "" || dbConnStr == "" {
-		panic("error loading environment variables")
+	if port == "" {
+		panic("error port not found in .env")
+	}
+	if dbConnStr == "" {
+		panic("error db_uri not found in .env")
 	}
 	sugar.Infow("Loaded environment variables")
 
@@ -71,13 +77,14 @@ func main() {
 	sugar.Infow("Migrations performed")
 
 	//Create enricher
-	enricher := enrich.New(sugar)
+	client := &http.Client{Timeout: httpClientTimeout}
+	enricher := enrich.New(client, sugar)
 
 	//Create and run the service
 	service := api.New(sugar, storage, enricher)
 	sugar.Infow("New service created")
 
-	if err := service.Run(context.Background(), address); err != nil {
+	if err := service.Run(context.Background(), port); err != nil {
 		panic(err)
 	}
 	sugar.Infow("Service stopped")

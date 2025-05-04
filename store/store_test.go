@@ -187,35 +187,39 @@ func TestGetPeople(t *testing.T) {
 	}
 
 	//Get everyone from the db
-	peopleFromDB, err := store.GetPeople(context.Background(), &Params{Limit: 12})
+	peopleFromDB, err := store.GetPeople(context.Background(), &GetParams{Limit: 12})
 	assert.NoError(t, err)
 	for i, p := range peopleFromDB {
 		assert.EqualValues(t, p, people[i])
 	}
 
 	//Get first 5 people from the db
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{Limit: 5})
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{Limit: 5})
 	assert.NoError(t, err)
 	for i, p := range peopleFromDB {
 		assert.EqualValues(t, p, people[i])
 	}
 
 	//Get next 5 people from the db
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{Limit: 5, Cursor: 5})
+	cursor := 5
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{Limit: 5, Cursor: &cursor})
 	assert.NoError(t, err)
 	for i, p := range peopleFromDB {
 		assert.EqualValues(t, p, people[i+5])
 	}
 
 	//Filter people with Ivanova surname
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{Limit: 12, Cursor: 1, Surname: "Ivanova"})
+	cursor = 1
+	surname := "Ivanova"
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{Limit: 12, Cursor: &cursor, Surname: &surname})
 	assert.NoError(t, err)
 	assert.EqualValues(t, peopleFromDB[0], people[5])
 	assert.EqualValues(t, peopleFromDB[1], people[9])
 	assert.EqualValues(t, peopleFromDB[2], people[11])
 
 	//Filter women
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{Limit: 12, Cursor: 1, Gender: "female"})
+	gender := "female"
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{Limit: 12, Cursor: &cursor, Gender: &gender})
 	assert.NoError(t, err)
 	assert.EqualValues(t, peopleFromDB[0], people[1])
 	assert.EqualValues(t, peopleFromDB[1], people[3])
@@ -225,27 +229,35 @@ func TestGetPeople(t *testing.T) {
 	assert.EqualValues(t, peopleFromDB[5], people[11])
 
 	//Filter people who are 61 years old
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{Limit: 12, Cursor: 1, Age: 61})
+	age := 61
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{Limit: 12, Cursor: &cursor, Age: &age})
 	assert.NoError(t, err)
 	assert.EqualValues(t, peopleFromDB[0], people[5])
 	assert.EqualValues(t, peopleFromDB[1], people[8])
 
 	//Filter people who are kazakh
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{Limit: 12, Cursor: 1, Nationality: "kazakh"})
+	nationality := "kazakh"
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{Limit: 12, Cursor: &cursor, Nationality: &nationality})
 	assert.NoError(t, err)
 	assert.EqualValues(t, peopleFromDB[0], people[5])
 	assert.EqualValues(t, peopleFromDB[1], people[11])
 
 	//Filter Andrei Novikov Vladimirovich 38 y.o. georgian
-	peopleFromDB, err = store.GetPeople(context.Background(), &Params{
+	name := "Andrei"
+	surname = "Novikov"
+	patronymic := "Vladimirovich"
+	age = 38
+	gender = "male"
+	nationality = "georgian"
+	peopleFromDB, err = store.GetPeople(context.Background(), &GetParams{
 		Limit:       12,
-		Cursor:      1,
-		Name:        "Andrei",
-		Surname:     "Novikov",
-		Patronymic:  "Vladimirovich",
-		Age:         38,
-		Gender:      "male",
-		Nationality: "georgian"})
+		Cursor:      &cursor,
+		Name:        &name,
+		Surname:     &surname,
+		Patronymic:  &patronymic,
+		Age:         &age,
+		Gender:      &gender,
+		Nationality: &nationality})
 	assert.NoError(t, err)
 	assert.EqualValues(t, peopleFromDB[0], people[10])
 }
@@ -276,7 +288,7 @@ func TestUpdatePerson(t *testing.T) {
 	assert.NoError(t, store.UpdatePerson(context.Background(), &person))
 
 	//Check if the person has been updated
-	people, err := store.GetPeople(context.Background(), &Params{Limit: 1, Name: person.Name, Surname: person.Surname})
+	people, err := store.GetPeople(context.Background(), &GetParams{Limit: 1, Name: &person.Name, Surname: &person.Surname})
 	assert.NoError(t, err)
 	assert.EqualValues(t, person, *people[0])
 }

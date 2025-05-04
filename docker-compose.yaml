@@ -5,9 +5,6 @@ services:
     environment:
       POSTGRES_PASSWORD: mysecretpassword
     restart: always 
-    networks:
-      service_network:
-        ipv4_address: "192.168.92.20"
     volumes:
       - ./pgdata:/var/lib/postgresql/data    
   service:
@@ -18,17 +15,8 @@ services:
       - postgres
     environment:
     #Change the environmental variables to your own
-      ADDRESS: "0.0.0.0:8080"
+      PORT: ":8080"
       DB_URI: "postgres://postgres:mysecretpassword@postgres:5432/postgres?sslmode=disable"
     restart: always
-    networks:
-      service_network:
-        ipv4_address: "192.168.92.21"
     ports:
       - "8080:8080"
-networks:
-  service_network:
-    ipam: 
-      driver: default
-      config:
-        - subnet: "192.168.92.0/24"

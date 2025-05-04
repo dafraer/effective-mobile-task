@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -12,7 +13,7 @@ type Storer interface {
 	DeletePerson(ctx context.Context, id int) error
 	SavePerson(ctx context.Context, person *Person) (int, error)
 	UpdatePerson(ctx context.Context, person *Person) error
-	GetPeople(ctx context.Context, params *Params) ([]*Person, error)
+	GetPeople(ctx context.Context, params *GetParams) ([]*Person, error)
 }
 
 type Store struct {
@@ -60,57 +61,87 @@ func (s *Store) SavePerson(ctx context.Context, person *Person) (int, error) {
 }
 
 // UpdatePerson updates a person in the database
-// It only updates non-zero fields
 func (s *Store) UpdatePerson(ctx context.Context, person *Person) error {
 	s.logger.Debugw("UpdatePerson called", "person", *person)
 
 	_, err := s.db.ExecContext(ctx, `
 	UPDATE people 
 	SET 
-	name = CASE WHEN $1 <> '' THEN $1 ELSE name END,
-	surname = CASE WHEN $2 <> '' THEN $2 ELSE surname END,
-	patronymic = CASE WHEN $3 <> '' THEN $3 ELSE patronymic END,
-	age = CASE WHEN $4 <> 0 THEN $4 ELSE age END,
-	gender = CASE WHEN $5 <> '' THEN $5 ELSE gender END,
-	nationality = CASE WHEN $6 <> '' THEN $6 ELSE nationality END
+	name = $1 ,
+	surname = $2,
+	patronymic = $3,
+	age = $4,
+	gender = $5,
+	nationality = $6
 	WHERE id = $7;
 	 `, person.Name, person.Surname, person.Patronymic, person.Age, person.Gender, person.Nationality, person.ID)
 	return err
 }
 
-type Params struct {
+type GetParams struct {
 	Limit       int
-	Cursor      int
-	Name        string
-	Surname     string
-	Patronymic  string
-	Age         int
-	Gender      string
-	Nationality string
+	Cursor      *int
+	Name        *string
+	Surname     *string
+	Patronymic  *string
+	Age         *int
+	Gender      *string
+	Nationality *string
+}
+
+// NewParams populates GetParams struct and returns a pointer to it
+func NewParams(limit, cursor, age int, name, surname, patronymic, gender, nationality string) *GetParams {
+	params := &GetParams{}
+	params.Limit = limit
+	params.Cursor = &cursor
+	if name != "" {
+		params.Name = &name
+	}
+	if surname != "" {
+		params.Surname = &surname
+	}
+	if patronymic != "" {
+		params.Patronymic = &patronymic
+	}
+	if age != 0 {
+		params.Age = &age
+	}
+	if gender != "" {
+		params.Gender = &gender
+	}
+	if nationality != "" {
+		params.Nationality = &nationality
+	}
+	return params
 }
 
 // GetPeople retrieves next page of users from the database
 // It returns slice of people with ID greater than cursor and specified parameters
-func (s *Store) GetPeople(ctx context.Context, params *Params) ([]*Person, error) {
+func (s *Store) GetPeople(ctx context.Context, params *GetParams) ([]*Person, error) {
 	s.logger.Debugw("GetPeople called", "params", *params)
 
+	//Build query
+	q := strings.Builder{}
+	paramList := []interface{}{params.Limit, params.Name, params.Surname, params.Patronymic, params.Age, params.Gender, params.Nationality}
+	q.WriteString("SELECT id, name, surname, patronymic, age, gender, nationality FROM people WHERE ")
+	if params.Cursor != nil {
+		q.WriteString("id > $8 AND")
+		paramList = append(paramList, params.Cursor)
+	}
+	q.WriteString(`	($2::TEXT IS NULL OR name = $2) AND
+	($3::TEXT IS NULL OR surname = $3) AND
+	($4::TEXT IS NULL OR patronymic = $4) AND
+	($5::INTEGER IS NULL OR age = $5) AND
+	($6::TEXT IS NULL OR gender = $6) AND
+	($7::TEXT IS NULL OR nationality = $7)
+	ORDER BY id LIMIT $1;
+	`)
 	//Get people from the database
-	rows, err := s.db.QueryContext(ctx, `
-	SELECT id, name, surname, patronymic, age, gender, nationality FROM people 
-	WHERE 
-	id > $1 AND
-	($3 = '' OR name = $3) AND
-	($4 = '' OR surname = $4) AND
-	($5 = '' OR patronymic = $5) AND
-	($6 = 0 OR age = $6) AND
-	($7 = '' OR gender = $7) AND
-	($8 = '' OR nationality = $8)
-	ORDER BY id LIMIT $2
-	`, params.Cursor, params.Limit, params.Name, params.Surname, params.Patronymic, params.Age, params.Gender, params.Nationality)
-	defer rows.Close()
+	rows, err := s.db.QueryContext(ctx, q.String(), paramList...)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	//Create a slice of people and scan rows
 	people := make([]*Person, 0, params.Limit)
@@ -123,5 +154,5 @@ func (s *Store) GetPeople(ctx context.Context, params *Params) ([]*Person, error
 	}
 	s.logger.Debugw("Received people from the database", "people", people)
 
-	return people, err
+	return people, nil
 }
