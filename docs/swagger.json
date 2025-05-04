@@ -131,7 +131,7 @@
                 "operationId": "get-people-list",
                 "parameters": [
                     {
-                        "maximum": 100,
+                        "maximum": 1000,
                         "minimum": 1,
                         "type": "integer",
                         "example": 10,
@@ -222,7 +222,7 @@
         },
         "/update": {
             "put": {
-                "description": "Updates fields for an existing person based on the provided data. Only non-empty fields in the request body are typically used for the update. Requires the person's ID in the request body.",
+                "description": "Updates fields for an existing person based on the provided data.",
                 "consumes": [
                     "application/json"
                 ],
@@ -273,7 +273,7 @@
                 }
             },
             "patch": {
-                "description": "Updates fields for an existing person based on the provided data. Only non-empty fields in the request body are typically used for the update. Requires the person's ID in the request body.",
+                "description": "Updates fields for an existing person based on the provided data.",
                 "consumes": [
                     "application/json"
                 ],
@@ -343,7 +343,7 @@
         "api.getResponse": {
             "type": "object",
             "properties": {
-                "cursor": {
+                "next_cursor": {
                     "type": "integer"
                 },
                 "people": {

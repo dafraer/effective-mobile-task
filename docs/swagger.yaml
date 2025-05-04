@@ -11,7 +11,7 @@ definitions:
     type: object
   api.getResponse:
     properties:
-      cursor:
+      next_cursor:
         type: integer
       people:
         items:
@@ -147,7 +147,7 @@ paths:
       - description: Number of items to return per page (must be between 1 and 100)
         example: 10
         in: query
-        maximum: 100
+        maximum: 1000
         minimum: 1
         name: limit
         required: true
@@ -219,8 +219,6 @@ paths:
       consumes:
       - application/json
       description: Updates fields for an existing person based on the provided data.
-        Only non-empty fields in the request body are typically used for the update.
-        Requires the person's ID in the request body.
       operationId: update-person-details
       parameters:
       - description: Person data to update. Include the ID of the person and the fields
@@ -257,8 +255,6 @@ paths:
       consumes:
       - application/json
       description: Updates fields for an existing person based on the provided data.
-        Only non-empty fields in the request body are typically used for the update.
-        Requires the person's ID in the request body.
       operationId: update-person-details
       parameters:
       - description: Person data to update. Include the ID of the person and the fields
